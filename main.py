@@ -158,22 +158,5 @@ for row in range(initial_row, final_row):
 
 
 
-
-
-
-		#if not exist or name = "", insert row in pack table (colum J => Packs.comment)
-		#take pack_ID for each element, save in a list
-
-		# all_years = data[10]
-		# # print all_years
-
-		# #INSERT NEW ROW IN PIECE TABLE
-		# for year in all_years.split(' '):
-		# 	print year
-		# 	#TODO: for each row, in fromwhere add one ID from the previous list
-		# 	cur.execute("INSERT INTO `COIN_PIECE`(`ID_KM`,`YEAR`, `COMMENT`, `FROMWHERE`) VALUES (?,?,?,?)", 
-		# 		( last_row_km, year, "fool", None ))
-
-		# print '-------------------'
 print ("\nDone")
 

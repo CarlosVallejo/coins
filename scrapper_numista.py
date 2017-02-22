@@ -49,38 +49,66 @@ def scrap_id_numista(soup):
 def create_link_ID(numistaID):
 	return "https://en.numista.com/catalogue/pieces" + numistaID + ".html"
 
-#Scrap Coin Name
-def scrap_coin_name(soup):
+
+#Scrap info from numista	
+def scrap_coin_data(soup):
+
+	#title coin
 	# <h1>2 Euro - Juan Carlos I <span style="font-size:50%;">1st type - 2nd map</span></h1>
-	return soup.h1.get_text()
+	title = soup.h1.get_text()
 	
-def scrap_coin_years(soup):
-	# 
+	#years, KM and material are in 'Features' table
 	ficha = soup.find('section', id="fiche_caracteristiques")
 	info_ficha = ficha.table.find_all("td")
 
 	years = info_ficha[1].string
 	material = info_ficha[3].string
-	print years
-	# m = re.search("Years</th><td>(.+?)</td", str(ficha))
-	# print m
-	# if m:
-	# 	  return m.group(1)
-	# else:
-	# 	return None
+
+	#KM v2
+	#
+	#TODO Improve km_num output, it can be "906Modern"
+	#
+	system = ("KM", "Y#")
+	km_raw = info_ficha[-1].get_text().split(",")[0]
+	if km_raw[:2] in system:
+		try:
+			km_sys = km_raw.split(" ")[0]
+			km_num = km_raw.split(" ")[1]
+		except:
+			km_sys = None
+			km_num = None
+	else:
+		km_sys = None
+		km_num = None
+
+
+	return title, years, material, km_sys, km_num
 
 
 
+#TODO
+#Scrap photo from numista
 
-def main():
-	soup = giveme_soup( create_link_search("spain", "KM#", "1074") )
+
+
+def main(i):
+	soup = giveme_soup( create_link_search("poland", "Y#", i) )
 	print "-------------------------->>>>>>>>>"
 
-	soup = giveme_soup( create_link_ID( scrap_id_numista(soup) ))
+	id_numista = scrap_id_numista(soup)
 
-	# scrap_coin_name(soup)
-	print scrap_coin_years(soup)
+	if id_numista is not None:
+		soup = giveme_soup( create_link_ID( id_numista ))
+		data = scrap_coin_data(soup)
+
+		# for i in data:
+		# 	print i
+	else:
+		#Coin no found in numista site
+		pass
 
 
 
-main()
+
+for i in range(904, 908):
+	main(str(i))

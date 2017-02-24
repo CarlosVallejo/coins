@@ -64,7 +64,24 @@ def scrap_description(soup):
 
 #Search in numista site
 def create_link_search(country, km_sys, km_num):
-	return "https://en.numista.com/catalogue/index.php?mode=simplifie&p=1&r=" + country + "+" + km_sys.replace("#", "%23") + km_num
+
+	return "https://en.numista.com/catalogue/index.php?mode=simplifie&p=1&r=" + country + "+" + str(km_sys).replace("#", "%23") + km_num
+
+#scrap ID numista from search website
+def scrap_id_numista(soup):
+	right_table=soup.find('div', class_='description_piece')
+	text = str(right_table)
+
+	m = re.search("<strong><a href=\"pieces(.+?).html\">", text)
+	if m:
+		  return m.group(1)
+	else:
+		return None
+
+#Create link for specific coin in Numista site
+def create_link_ID_numista(numistaID):
+
+	return "https://en.numista.com/catalogue/pieces" + numistaID + ".html"
 
 
 #Done, review till here
@@ -250,7 +267,13 @@ def main():
 		#data_coin[8] = description
 		#data_coin[9] = photo
 
+		data_coin = list(data_coin)
+		new_data_coin = [None]*10
+
+
 		print "--------------------------------------@ ", data_coin[0]
+
+		#If there is KM Number:
 		if data_coin[3] is not None:
 
 			link_coin = link_creator(data_coin[1], data_coin[6], data_coin[2], data_coin[3])
@@ -259,16 +282,26 @@ def main():
 			soup = giveme_soup(link_coin)
 
 			#get new description:
-			if len(data_coin[8]) > 2:
-				print scrap_description(soup)
+			#TODO When to update?
+			# if len(data_coin[8]) > 2:
+			# 	print scrap_description(soup)
 
-			link_coin = create_link_search(data_coin[1], data_coin[2], data_coin[3])
+			# If there is not ID NUMISTA: Create link Numista search, soup it and get its ID numista
+			if data_coin[4] is None:
+				link_coin = create_link_search(data_coin[1], data_coin[2], data_coin[3])
+				soup = giveme_soup(link_coin)
+
+				new_data_coin[4] = data_coin[4] = scrap_id_numista(soup)
+
+
+		#If there is Numista ID:
+		if data_coin[4] is not None:
+
+			#Create link with ID numista, soup it
+			link_coin = create_link_ID_numista(data_coin[4])
 			soup = giveme_soup(link_coin)
 
-			
 
-		elif data_coin[4] is not None:
-			pass
 
 	 
 #############################################################

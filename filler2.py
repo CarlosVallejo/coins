@@ -29,11 +29,18 @@ def searcher_coin(id):
 			cur = con.cursor()
 			
 			#Select row without restrictions 
-			cur.execute("SELECT ID_KM, COUNTRY, KM_SYSTEM, KM_NUM, ID_NUMISTA, DDATE, DENOMINATION, TITLE, DESCRIPTION, PHOTO FROM COIN_KM WHERE ID_KM is ? ",(id, ))
+			cur.execute("SELECT ID_KM, COUNTRY, KM_SYSTEM, KM_NUM, ID_NUMISTA, DDATE, DENOMINATION, TITLE, DESCRIPTION, PHOTO, MATERIAL FROM COIN_KM WHERE ID_KM is ? ",(id, ))
 
 			return cur.fetchall()[0]
 	except:
 		return None
+
+#Beatifulsoup funtion necesary to scrapt the website
+def giveme_soup(web):
+
+	page = urllib2.urlopen(web)
+	soup = BeautifulSoup(page)
+	return soup
 
 #Create the link to numismaster, Input: Country, Value, KM System, KM Number
 def link_creator(country, value, km_sys, km_num):
@@ -83,30 +90,103 @@ def create_link_ID_numista(numistaID):
 
 	return "https://en.numista.com/catalogue/pieces" + numistaID + ".html"
 
+#Scrap title coin from numista	
+def scrap_title_numista(soup):
 
-#Done, review till here
+	#title coin
+	# <h1>2 Euro - Juan Carlos I <span style="font-size:50%;">1st type - 2nd map</span></h1>
+	return soup.h1.get_text()
+
+#Scrap title coin from numista	
+def scrap_km_numista(soup):
+	
+	#years, KM and material are in 'Features' table
+	ficha = soup.find('section', id="fiche_caracteristiques")
+	info_ficha = ficha.table.find_all("td")
+
+	#
+	#TODO Improve km_num output, it can be "906Modern"
+	#
+	system = ("KM", "Y#")
+	km_raw = info_ficha[-1].get_text().split(",")[0]
+	if km_raw[:2] in system:
+		try:
+			# km_sys = km_raw.split(" ")[0]
+			km_num = km_raw.split(" ")[1]
+		except:
+			# km_sys = None
+			km_num = None
+	else:
+		# km_sys = None
+		km_num = None
+
+
+	return km_num
+
+#Scrap title coin from numista	
+def scrap_yema_numista(soup):
+	
+	#years, KM and material are in 'Features' table
+	ficha = soup.find('section', id="fiche_caracteristiques")
+	info_ficha = ficha.table.find_all("td")
+
+	years = info_ficha[1].string
+	material = info_ficha[3].string
+
+	return years, material
 
 #Select one coin by its ID_KM
-def update_coin(id, ddate_coin, desc_coin, mate_coin, pic_coin):
+def update_coin(new_data):
+		#data_coin[0] = ID
+		#data_coin[1] = Country
+		#data_coin[2] = KM system
+		#data_coin[3] = KM number
+		#data_coin[4] = ID_Numista
+		#data_coin[5] = ddate
+		#data_coin[6] = denomination
+		#data_coin[7] = title
+		#data_coin[8] = description
+		#data_coin[9] = photo
+		#data_coin[10] = material
 
 	with con:
 		cur = con.cursor()
-		#Origial Version:
-		# cur.execute("UPDATE COIN_KM SET DDATE = ?, DESCRIPTION = ?, MATERIAL=?, PHOTO =? WHERE ID_KM = ?", (ddate_coin, desc_coin, mate_coin, pic_coin, id))
-		
-		#Version for fixer_pic
-		cur.execute("UPDATE COIN_KM SET PHOTO =? WHERE ID_KM = ?", (pic_coin, id))
+
+		#Update KM Number
+		if new_data[3] is not None:
+			cur.execute("UPDATE COIN_KM SET KM_NUM =? WHERE ID_KM = ?", (new_data[3], id))
+
+		#Update ID Numista
+		if new_data[4] is not None:
+			cur.execute("UPDATE COIN_KM SET ID_NUMISTA =? WHERE ID_KM = ?", (new_data[4], id))
+
+		#Update Date
+		if new_data[5] is not None:
+			cur.execute("UPDATE COIN_KM SET DDATE =? WHERE ID_KM = ?", (new_data[5], id))
+
+		#Update Title
+		if new_data[7] is not None:
+			cur.execute("UPDATE COIN_KM SET TITLE =? WHERE ID_KM = ?", (new_data[7], id))
+
+		#Update Description
+		if new_data[8] is not None:
+			cur.execute("UPDATE COIN_KM SET DESCRIPTION =? WHERE ID_KM = ?", (new_data[8], id))
+
+		#Update Material
+		if new_data[10] is not None:
+			cur.execute("UPDATE COIN_KM SET MATERIAL =? WHERE ID_KM = ?", (new_data[10], id))
 
 		con.commit()
-		# for row in cur.fetchall():
-		# 	return row
 
-#Beatifulsoup funtion necesary to scrapt the website
-def giveme_soup(web):
 
-	page = urllib2.urlopen(web)
-	soup = BeautifulSoup(page)
-	return soup
+############
+############
+#####################Done, review till here
+############
+############
+
+
+
 
 #Scrapt the website looking for the date, return STR var
 def scrap_date(soup):
@@ -251,6 +331,12 @@ def fixer_pic():
 				print "No photo"
 			update_coin(data_coin[0], 0,0,0, pic_coin)
 
+#####
+#####
+#####
+#####
+
+
 #Main Script
 def main():
 	for row in range(1317, 1323):
@@ -266,25 +352,16 @@ def main():
 		#data_coin[7] = title
 		#data_coin[8] = description
 		#data_coin[9] = photo
+		#data_coin[10] = material
 
 		data_coin = list(data_coin)
-		new_data_coin = [None]*10
+		new_data_coin = [None]*11
 
 
 		print "--------------------------------------@ ", data_coin[0]
 
 		#If there is KM Number:
 		if data_coin[3] is not None:
-
-			link_coin = link_creator(data_coin[1], data_coin[6], data_coin[2], data_coin[3])
-
-			# print link_coin
-			soup = giveme_soup(link_coin)
-
-			#get new description:
-			#TODO When to update?
-			# if len(data_coin[8]) > 2:
-			# 	print scrap_description(soup)
 
 			# If there is not ID NUMISTA: Create link Numista search, soup it and get its ID numista
 			if data_coin[4] is None:
@@ -301,7 +378,28 @@ def main():
 			link_coin = create_link_ID_numista(data_coin[4])
 			soup = giveme_soup(link_coin)
 
+			#if KM is null, find it
+			if data_coin[3] is None or len(data_coin[3]) == 0:
+				new_data_coin[3] = data_coin[3] = scrap_km_numista(soup)
 
+			#title
+			new_data_coin[7] = scrap_title_numista(soup)
+
+			#years and material
+			i = scrap_yema_numista
+			new_data_coin[5] = data_coin[5] = i[0]
+
+			if data_coin[10] is None or len(data_coin[10]) == 0 or data_coin[10][0] == "#":
+				new_data_coin[10] = data_coin[10] = i[1]
+
+			#get new description from numismaster:
+			link_coin = link_creator(data_coin[1], data_coin[6], data_coin[2], data_coin[3])
+			soup = giveme_soup(link_coin)
+
+			if data_coin[8] is None or len(data_coin[8]) == 0 or data_coin[8][0] == "#":
+				new_data_coin[8] = scrap_material(soup)
+
+		update_coin(new_data_coin)
 
 	 
 #############################################################

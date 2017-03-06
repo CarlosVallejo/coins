@@ -67,7 +67,7 @@ def scrap_description(soup):
 		return repr(right_table.text)[3:-5]
 
 	else:
-		return None
+		return ""
 
 #Search in numista site
 def create_link_search(country, km_sys, km_num):
@@ -292,4 +292,4 @@ def main(a, z):
 #############################################################
 
 
-main(800, 2000)
+main(1375, 2000)

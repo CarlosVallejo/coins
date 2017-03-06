@@ -72,7 +72,7 @@ def scrap_description(soup):
 #Search in numista site
 def create_link_search(country, km_sys, km_num):
 
-	return "https://en.numista.com/catalogue/index.php?mode=simplifie&p=1&r=" + country.replace(" ", "_") + "+" + str(km_sys).replace("#", "%23") + km_num
+	return "https://en.numista.com/catalogue/index.php?mode=simplifie&p=1&r=" + country + "+" + str(km_sys).replace("#", "%23") + km_num
 
 #scrap ID numista from search website
 def scrap_id_numista(soup):
@@ -149,11 +149,14 @@ def update_coin(new_data):
 	#data_coin[9] = photo
 	#data_coin[10] = material
 
+	# print new_data
+
 	id = new_data[0]
+
+
 
 	with con:
 		cur = con.cursor()
-
 
 		#Update KM Number
 		if new_data[3] is not None:
@@ -182,6 +185,7 @@ def update_coin(new_data):
 		con.commit()
 
 
+
 ############
 ############
 #####################Done, review till here
@@ -196,8 +200,8 @@ def update_coin(new_data):
 
 
 #Main Script
-def main(a, z):
-	for row in range(a, z):
+def main():
+	for row in range(1, 10):
 	
 		data_coin = searcher_coin(row)
 		#data_coin[0] = ID
@@ -211,9 +215,6 @@ def main(a, z):
 		#data_coin[8] = description
 		#data_coin[9] = photo
 		#data_coin[10] = material
-
-		if data_coin is None:
-			break
 
 		data_coin = list(data_coin)
 		new_data_coin = [None]*11
@@ -229,17 +230,9 @@ def main(a, z):
 			# If there is not ID NUMISTA: Create link Numista search, soup it and get its ID numista
 			if data_coin[4] is None:
 				link_coin = create_link_search(data_coin[1], data_coin[2], data_coin[3])
-				# print link_coin
 				soup = giveme_soup(link_coin)
 
 				new_data_coin[4] = data_coin[4] = scrap_id_numista(soup)
-
-				#Couldnt find NumistaID due KM nomination: 787.1 search 787
-				if new_data_coin[4] is None:
-
-					link_coin = create_link_search(data_coin[1], data_coin[2], data_coin[3].split(".")[0])
-					soup = giveme_soup(link_coin)
-					new_data_coin[4] = data_coin[4] = scrap_id_numista(soup)
 
 
 		#If there is Numista ID:
@@ -254,8 +247,7 @@ def main(a, z):
 				new_data_coin[3] = data_coin[3] = scrap_km_numista(soup)
 
 			#title
-			if data_coin[7] is None:
-				new_data_coin[7] = scrap_title_numista(soup)
+			new_data_coin[7] = scrap_title_numista(soup)
 
 			#years and material
 			i = scrap_yema_numista(soup)
@@ -283,7 +275,7 @@ def main(a, z):
 
 
 
-		# print new_data_coin
+		print new_data_coin
 		update_coin(new_data_coin)
 
 	 
@@ -292,4 +284,6 @@ def main(a, z):
 #############################################################
 
 
-main(800, 2000)
+main()
+
+

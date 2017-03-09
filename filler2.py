@@ -29,11 +29,25 @@ def searcher_coin(id):
 			cur = con.cursor()
 			
 			#Select row without restrictions 
-			cur.execute("SELECT ID_KM, COUNTRY, KM_SYSTEM, KM_NUM, ID_NUMISTA, DDATE, DENOMINATION, TITLE, DESCRIPTION, PHOTO, MATERIAL FROM COIN_KM WHERE ID_KM is ? ",(id, ))
+			cur.execute("SELECT ID_KM, COUNTRY, KM_SYSTEM, KM_NUM, ID_NUMISTA, DDATE, DENOMINATION, TITLE, DESCRIPTION, PHOTO, MATERIAL, KM FROM COIN_KM WHERE ID_KM is ? ",(id, ))
 
 			return cur.fetchall()[0]
 	except:
 		return None
+
+#Search for a list of coins
+def search_list_coin(i):
+	try:
+		with con:
+			cur = con.cursor()
+			
+			#Select row without restrictions 
+			cur.execute("SELECT ALL ID_KM, COUNTRY, KM_SYSTEM, KM_NUM, ID_NUMISTA, DDATE, DENOMINATION, TITLE, DESCRIPTION, PHOTO, MATERIAL, KM FROM COIN_KM WHERE TITLE is ? ",(i, ))
+
+			return cur.fetchall()
+	except:
+		return None
+
 
 #Beatifulsoup funtion necesary to scrapt the website
 def giveme_soup(web):
@@ -148,6 +162,7 @@ def update_coin(new_data):
 	#data_coin[8] = description
 	#data_coin[9] = photo
 	#data_coin[10] = material
+	#data_coin[11] = km #info
 
 	id = new_data[0]
 
@@ -179,8 +194,20 @@ def update_coin(new_data):
 		if new_data[10] is not None:
 			cur.execute("UPDATE COIN_KM SET MATERIAL =? WHERE ID_KM = ?", (new_data[10], id))
 
+		#Update Version update
+		if new_data[11] is not None:
+			cur.execute("UPDATE COIN_KM SET KM =? WHERE ID_KM = ?", (new_data[11], id))
+
 		con.commit()
 
+#Script to clean one column or update one column to the same value
+def clean_col():
+	for row in range(1, 1380):
+		value = None
+		with con:
+			cur = con.cursor()
+			cur.execute("UPDATE COIN_KM SET KM = ? WHERE ID_KM = ?", (value, row))
+	con.commit()
 
 ############
 ############
@@ -211,6 +238,7 @@ def main(a, z):
 		#data_coin[8] = description
 		#data_coin[9] = photo
 		#data_coin[10] = material
+		#data_coin[11] = km #Other info
 
 		if data_coin is None:
 			break
@@ -279,12 +307,125 @@ def main(a, z):
 					if data_coin[8][0] == "#":
 						link_coin = link_creator(data_coin[1], data_coin[6], data_coin[2], data_coin[3])
 						soup = giveme_soup(link_coin)
-						new_data_coin[8] = scrap_description(soup) + " " + str(data_coin[8])
+						descrp = scrap_description(soup)
+						if len(descrp) != 0:
+							new_data_coin[8] = descrp + " " + str(data_coin[8])
+
+		# print new_data_coin
+		# update_coin(new_data_coin)
+
+#Code to fix the first emptly Char in some descriptions
+def main_fixer():
+	for row in range(1, 1500):
+	
+		data_coin = searcher_coin(row)
+
+		if data_coin is None:
+			break
+
+		data_coin = list(data_coin)
+		new_data_coin = [None]*11
+
+		new_data_coin[0] = data_coin[0]
+
+		if data_coin[8] is not None:
+			if data_coin[8][:2] == " #":
+				new_data_coin[8] =  data_coin[8][1:]
+
+		update_coin(new_data_coin)
+
+#new one
+def main_revisor():
+
+	for data_coin in search_list_coin(None):
+
+		if data_coin is None:
+			break
+
+		data_coin = list(data_coin)
+		new_data_coin = [None]*12
+
+		new_data_coin[0] = data_coin[0]
+		new_data_coin[11] = "Update1"
+
+		#fix some countries names for Numista
+		if data_coin[1] == "Great Britain":
+			data_coin[1] = "United Kingdom"
+		elif data_coin[1] == "Ireland Republic":
+			data_coin[1] = "eire"
+		elif data_coin[1] == "Russia":
+			data_coin[1] = "Soviet Union"
+		elif data_coin[1] == "Trinidad & Tobago":
+			data_coin[1] = "trinidad"
 
 
+		print "--------------------------------------@ ", data_coin[0]
+
+		#If there is KM Number:
+		if data_coin[3] is not None:
+
+			# If there is not ID NUMISTA: Create link Numista search, soup it and get its ID numista
+			if data_coin[4] is None:
+				link_coin = create_link_search(data_coin[1], data_coin[2], data_coin[3])
+				# print link_coin
+				soup = giveme_soup(link_coin)
+
+				new_data_coin[4] = data_coin[4] = scrap_id_numista(soup)
+
+				#Couldnt find NumistaID due KM nomination: 787.1 search 787
+				if new_data_coin[4] is None:
+
+					link_coin = create_link_search(data_coin[1], data_coin[2], data_coin[3].split(".")[0])
+					soup = giveme_soup(link_coin)
+					print link_coin
+					new_data_coin[4] = data_coin[4] = scrap_id_numista(soup)
+
+
+		#If there is Numista ID:
+		if data_coin[4] is not None:
+
+			#Create link with ID numista, soup it
+			link_coin = create_link_ID_numista(data_coin[4])
+			soup = giveme_soup(link_coin)
+
+			#if KM is null, find it
+			if data_coin[3] is None or len(data_coin[3]) == 0:
+				new_data_coin[3] = data_coin[3] = scrap_km_numista(soup)
+
+			#title
+			if data_coin[7] is None:
+				new_data_coin[7] = scrap_title_numista(soup)
+
+			#years and material
+			i = scrap_yema_numista(soup)
+
+			new_data_coin[5] = data_coin[5] = i[0]
+
+			if data_coin[10] is None or len(data_coin[10]) == 0 or data_coin[10][0] == "#":
+				new_data_coin[10] = data_coin[10] = i[1]
+
+			#get new description from numismaster:
+			if data_coin[3] is not None:
+
+				#if description is NULL or emptly
+				if data_coin[8] is None or len(data_coin[8]) == 0:
+					link_coin = link_creator(data_coin[1], data_coin[6], data_coin[2], data_coin[3])
+					soup = giveme_soup(link_coin)
+					new_data_coin[8] = scrap_description(soup)
+
+				#if descrption is a comment: first char is "#": add official desc and keep comment
+				if data_coin[8] is not None:
+					if data_coin[8][0] == "#":
+						link_coin = link_creator(data_coin[1], data_coin[6], data_coin[2], data_coin[3])
+						soup = giveme_soup(link_coin)
+						descrp = scrap_description(soup)
+						if len(descrp) != 0:
+							new_data_coin[8] = descrp + " " + str(data_coin[8])
 
 		# print new_data_coin
 		update_coin(new_data_coin)
+
+
 
 	 
 #############################################################
@@ -292,4 +433,7 @@ def main(a, z):
 #############################################################
 
 
-main(1375, 2000)
+# main(4, 1030)
+# main_fixer()
+
+main_revisor()
